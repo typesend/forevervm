@@ -9,6 +9,7 @@ from .types import (
     ExecResultResponse,
     ListMachinesResponse,
     WhoamiResponse,
+    RequestOptions,
 )
 from forevervm_sdk.config import DEFAULT_INSTRUCTION_TIMEOUT_SECONDS
 
@@ -41,17 +42,17 @@ class ForeverVM:
             self.__client_async = httpx.AsyncClient()
         return self.__client_async
 
-    def _get(self, path: str, type: Type[T]) -> T:
-        response = self._client.get(self._url(path), headers=self._headers())
+    def _get(self, path: str, type: Type[T], **kwargs: RequestOptions) -> T:
+        response = self._client.get(self._url(path), headers=self._headers(), **kwargs)
 
         response.raise_for_status()
 
         json = response.json()
         return cast(T, json) if type else json
 
-    async def _get_async(self, path: str, type: Type[T]) -> T:
+    async def _get_async(self, path: str, type: Type[T], **kwargs: RequestOptions) -> T:
         response = await self._client_async.get(
-            self._url(path), headers=self._headers()
+            self._url(path), headers=self._headers(), **kwargs
         )
 
         response.raise_for_status()
@@ -59,11 +60,9 @@ class ForeverVM:
         json = response.json()
         return cast(T, json) if type else json
 
-    def _post(self, path, type: Type[T], data=None):
+    def _post(self, path, type: Type[T], data=None, **kwargs: RequestOptions):
         response = self._client.post(
-            self._url(path),
-            headers=self._headers(),
-            json=data,
+            self._url(path), headers=self._headers(), json=data, **kwargs
         )
 
         response.raise_for_status()
@@ -71,11 +70,11 @@ class ForeverVM:
         json = response.json()
         return cast(T, json) if type else json
 
-    async def _post_async(self, path, type: Type[T], data=None):
+    async def _post_async(
+        self, path, type: Type[T], data=None, **kwargs: RequestOptions
+    ):
         response = await self._client_async.post(
-            self._url(path),
-            headers={"authorization": f"Bearer {self._token}"},
-            json=data,
+            self._url(path), headers=self._headers(), json=data, **kwargs
         )
 
         response.raise_for_status()
@@ -83,30 +82,34 @@ class ForeverVM:
         json = response.json()
         return cast(T, json) if type else json
 
-    def whoami(self):
-        return self._get("/v1/whoami", type=WhoamiResponse)
+    def whoami(self, **kwargs: RequestOptions):
+        return self._get("/v1/whoami", type=WhoamiResponse, **kwargs)
 
-    def whoami_async(self):
-        return self._get_async("/v1/whoami", type=WhoamiResponse)
+    async def whoami_async(self, **kwargs: RequestOptions):
+        return await self._get_async("/v1/whoami", type=WhoamiResponse, **kwargs)
 
-    def create_machine(self):
-        return self._post("/v1/machine/new", type=CreateMachineResponse)
+    def create_machine(self, **kwargs: RequestOptions):
+        return self._post("/v1/machine/new", type=CreateMachineResponse, **kwargs)
 
-    def create_machine_async(self):
-        return self._post_async("/v1/machine/new", type=CreateMachineResponse)
+    async def create_machine_async(self, **kwargs: RequestOptions):
+        return await self._post_async(
+            "/v1/machine/new", type=CreateMachineResponse, **kwargs
+        )
 
-    def list_machines(self):
-        return self._get("/v1/machine/list", type=ListMachinesResponse)
+    def list_machines(self, **kwargs: RequestOptions):
+        return self._get("/v1/machine/list", type=ListMachinesResponse, **kwargs)
 
-    def list_machines_async(self):
-        return self._get_async("/v1/machine/list", type=ListMachinesResponse)
+    async def list_machines_async(self, **kwargs: RequestOptions):
+        return await self._get_async(
+            "/v1/machine/list", type=ListMachinesResponse, **kwargs
+        )
 
     def exec(
         self,
         code: str,
         machine_name: str | None = None,
         interrupt: bool = False,
-        timeout_seconds: int = DEFAULT_INSTRUCTION_TIMEOUT_SECONDS,
+        instruction_timeout_seconds: int = DEFAULT_INSTRUCTION_TIMEOUT_SECONDS,
     ):
         if not machine_name:
             new_machine = self.create_machine()
@@ -116,7 +119,10 @@ class ForeverVM:
             f"/v1/machine/{machine_name}/exec",
             type=ExecResponse,
             data={
-                "instruction": {"code": code, "timeout_seconds": timeout_seconds},
+                "instruction": {
+                    "code": code,
+                    "timeout_seconds": instruction_timeout_seconds,
+                },
                 "interrupt": interrupt,
             },
         )
@@ -126,7 +132,7 @@ class ForeverVM:
         code: str,
         machine_name: str | None = None,
         interrupt: bool = False,
-        timeout_seconds: int = DEFAULT_INSTRUCTION_TIMEOUT_SECONDS,
+        instruction_timeout_seconds: int = DEFAULT_INSTRUCTION_TIMEOUT_SECONDS,
     ):
         if not machine_name:
             new_machine = await self.create_machine_async()
@@ -136,21 +142,30 @@ class ForeverVM:
             f"/v1/machine/{machine_name}/exec",
             type=ExecResponse,
             data={
-                "instruction": {"code": code, "timeout_seconds": timeout_seconds},
+                "instruction": {
+                    "code": code,
+                    "timeout_seconds": instruction_timeout_seconds,
+                },
                 "interrupt": interrupt,
             },
         )
 
-    def exec_result(self, machine_name: str, instruction_id: int):
+    def exec_result(
+        self, machine_name: str, instruction_id: int, **kwargs: RequestOptions
+    ):
         return self._get(
             f"/v1/machine/{machine_name}/exec/{instruction_id}/result",
             type=ExecResultResponse,
+            **kwargs,
         )
 
-    def exec_result_async(self, machine_name: str, instruction_id: int):
-        return self._get_async(
+    async def exec_result_async(
+        self, machine_name: str, instruction_id: int, **kwargs: RequestOptions
+    ):
+        return await self._get_async(
             f"/v1/machine/{machine_name}/exec/{instruction_id}/result",
             type=ExecResultResponse,
+            **kwargs,
         )
 
     def repl(self, machine_name="new") -> Repl:

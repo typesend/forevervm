@@ -1,4 +1,9 @@
 from typing import Any, Dict, List, Literal, Optional, TypedDict
+from httpx import Timeout
+
+
+class RequestOptions(TypedDict, total=False):
+    timeout: int | Timeout
 
 
 class WhoamiResponse(TypedDict):

@@ -97,13 +97,13 @@ async def test_exec_timeout():
 
     # sync
     code = "sleep(10)"
-    result = fvm.exec(code, machine_name, timeout_seconds=1)
+    result = fvm.exec(code, machine_name, instruction_timeout_seconds=1)
     instruction_seq = result["instruction_seq"]
     exec_result = fvm.exec_result(machine_name, instruction_seq)
     assert "Timed out" in exec_result["result"]["error"]
 
     # async
-    result = await fvm.exec_async(code, machine_name, timeout_seconds=1)
+    result = await fvm.exec_async(code, machine_name, instruction_timeout_seconds=1)
     instruction_seq = result["instruction_seq"]
     exec_result = await fvm.exec_result_async(machine_name, instruction_seq)
     assert "Timed out" in exec_result["result"]["error"]
